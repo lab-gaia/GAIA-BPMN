@@ -15,9 +15,7 @@ export function Organizations() {
   const queryClient = useQueryClient();
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>();
   const [organizationName, setOrganizationName] = useState("");
-  const [organizationCode, setOrganizationCode] = useState("");
   const [suborganizationName, setSuborganizationName] = useState("");
-  const [suborganizationCode, setSuborganizationCode] = useState("");
 
   const organizations = useQuery({ queryKey: ["organizations"], queryFn: listOrganizations });
   const suborganizations = useQuery({
@@ -30,19 +28,17 @@ export function Organizations() {
     void queryClient.invalidateQueries({ queryKey: ["suborganizations"] });
   };
   const createOrganizationMutation = useMutation({
-    mutationFn: () => createOrganization(organizationName, organizationCode),
+    mutationFn: () => createOrganization(organizationName),
     onSuccess: organization => {
       setOrganizationName("");
-      setOrganizationCode("");
       setSelectedOrganizationId(organization.id);
       refreshOrganizations();
     }
   });
   const createSuborganizationMutation = useMutation({
-    mutationFn: () => createSuborganization(selectedOrganizationId!, suborganizationName, suborganizationCode),
+    mutationFn: () => createSuborganization(selectedOrganizationId!, suborganizationName),
     onSuccess: () => {
       setSuborganizationName("");
-      setSuborganizationCode("");
       refreshOrganizations();
     }
   });
@@ -68,8 +64,8 @@ export function Organizations() {
       <section className="settings-card">
         <div className="settings-card-header">
           <div>
-            <h2>Órgãos</h2>
-            <p className="muted-text">Cadastre e ative os contextos organizacionais dos BPMNs.</p>
+            <h2>Organizações</h2>
+            <p className="muted-text">Organize os contextos dos BPMNs e mantenha seus vínculos ativos.</p>
           </div>
         </div>
         <form
@@ -79,24 +75,30 @@ export function Organizations() {
             if (organizationName.trim()) createOrganizationMutation.mutate();
           }}
         >
-          <label className="form-label">Nome do órgão<input value={organizationName} onChange={event => setOrganizationName(event.target.value)} required /></label>
-          <label className="form-label">Código (opcional)<input value={organizationCode} onChange={event => setOrganizationCode(event.target.value)} /></label>
-          <button type="submit" className="btn-primary" disabled={createOrganizationMutation.isPending}>Adicionar órgão</button>
+          <label className="form-label">Nome da organização<input value={organizationName} onChange={event => setOrganizationName(event.target.value)} required /></label>
+          <button type="submit" className="btn-primary" disabled={createOrganizationMutation.isPending}>Adicionar organização</button>
         </form>
         <div className="process-grid">
           {organizations.data?.map(organization => (
-            <button
-              type="button"
+            <div
               className={`process-card ${selectedOrganizationId === organization.id ? "selected" : ""}`}
               key={organization.id}
+              role="button"
+              tabIndex={0}
               onClick={() => setSelectedOrganizationId(organization.id)}
+              onKeyDown={event => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelectedOrganizationId(organization.id);
+                }
+              }}
             >
               <strong className="process-card-title">{organization.name}</strong>
-              <span className="process-card-file">{organization.code ?? "Sem código"} · {organization.isActive ? "Ativo" : "Inativo"}</span>
-              <span className="btn-secondary btn-xs" onClick={event => { event.stopPropagation(); toggleOrganization(organization); }}>
+              <span className="process-card-file">{organization.isActive ? "Ativo" : "Inativo"}</span>
+              <button type="button" className="btn-secondary btn-xs" onClick={event => { event.stopPropagation(); toggleOrganization(organization); }}>
                 {organization.isActive ? "Inativar" : "Ativar"}
-              </span>
-            </button>
+              </button>
+            </div>
           ))}
         </div>
       </section>
@@ -105,7 +107,7 @@ export function Organizations() {
         <div className="settings-card-header">
           <div>
             <h2>Subórgãos</h2>
-            <p className="muted-text">{selectedOrganizationId ? "Subórgãos do órgão selecionado." : "Selecione um órgão para administrar seus subórgãos."}</p>
+            <p className="muted-text">{selectedOrganizationId ? "Subórgãos da organização selecionada." : "Selecione uma organização para administrar seus subórgãos."}</p>
           </div>
         </div>
         {selectedOrganizationId && (
@@ -118,14 +120,13 @@ export function Organizations() {
               }}
             >
               <label className="form-label">Nome do subórgão<input value={suborganizationName} onChange={event => setSuborganizationName(event.target.value)} required /></label>
-              <label className="form-label">Código (opcional)<input value={suborganizationCode} onChange={event => setSuborganizationCode(event.target.value)} /></label>
               <button type="submit" className="btn-primary" disabled={createSuborganizationMutation.isPending}>Adicionar subórgão</button>
             </form>
             <div className="process-grid">
               {suborganizations.data?.map(suborganization => (
                 <div className="process-card" key={suborganization.id}>
                   <strong className="process-card-title">{suborganization.name}</strong>
-                  <span className="process-card-file">{suborganization.code ?? "Sem código"} · {suborganization.isActive ? "Ativo" : "Inativo"}</span>
+                  <span className="process-card-file">{suborganization.isActive ? "Ativo" : "Inativo"}</span>
                   <button type="button" className="btn-secondary btn-xs" onClick={() => toggleSuborganization(suborganization)}>
                     {suborganization.isActive ? "Inativar" : "Ativar"}
                   </button>

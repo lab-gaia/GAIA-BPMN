@@ -56,9 +56,9 @@ export function AppLayout({
     .join("") || "U";
 
   const navItems: Array<{ id: NavSection; label: string }> = [
-    { id: "processes", label: "Processos (Home)" },
-    ...(user.role === "Admin" ? [{ id: "organizations" as const, label: "Órgãos e Subórgãos" }] : []),
-    { id: "settings", label: "Configurações (Settings)" }
+    { id: "processes", label: "Processos" },
+    ...(user.role === "Admin" ? [{ id: "organizations" as const, label: "Organizações" }] : []),
+    { id: "settings", label: "Configurações" }
   ];
 
   return (

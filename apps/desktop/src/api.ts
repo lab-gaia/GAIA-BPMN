@@ -248,11 +248,11 @@ export async function listSuborganizations(organizationId: string): Promise<Subo
   );
 }
 
-export async function createOrganization(name: string, code?: string): Promise<Organization> {
+export async function createOrganization(name: string): Promise<Organization> {
   return organizationSchema.parse(await (await request("/api/v1/organizations", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, code: code || null })
+    body: JSON.stringify({ name })
   })).json());
 }
 
@@ -266,13 +266,12 @@ export async function updateOrganization(id: string, name: string, isActive: boo
 
 export async function createSuborganization(
   organizationId: string,
-  name: string,
-  code?: string
+  name: string
 ): Promise<Suborganization> {
   return suborganizationSchema.parse(await (await request(`/api/v1/organizations/${organizationId}/suborganizations`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, code: code || null })
+    body: JSON.stringify({ name })
   })).json());
 }
 
