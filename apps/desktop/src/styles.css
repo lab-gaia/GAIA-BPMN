@@ -29,7 +29,7 @@ body {
   color: var(--azul-primario);
 }
 
-h1, h2, h3, .gaia-brand-title, .gaia-page-title, .login-title {
+h1, h2, h3, .gaia-brand-title, .login-title {
   font-family: "Montserrat", system-ui, sans-serif;
 }
 
@@ -428,24 +428,9 @@ select:focus-visible {
   background: var(--azul-escuro);
   padding: 14px 16px;
   flex-shrink: 0;
-}
-
-.gaia-footer-badge {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.gaia-footer-title {
-  font-weight: 700;
-  font-size: 13px;
-  color: var(--azul-ciano);
-}
-
-.gaia-footer-badge small {
-  font-size: 11px;
-  color: var(--branco-complementar);
-  opacity: 0.8;
+  gap: 14px;
 }
 
 .gaia-main-area {
@@ -455,40 +440,31 @@ select:focus-visible {
   flex-direction: column;
 }
 
-.gaia-header {
-  min-height: 72px;
-  height: auto;
-  background: var(--surface);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
-}
-
-.gaia-header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-width: 0;
-}
-
-.gaia-page-title {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--azul-primario);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .gaia-user-box {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.gaia-sidebar-footer .gaia-user-box {
+  align-items: center;
+  min-width: 0;
+}
+
+.gaia-sidebar-footer .user-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.gaia-sidebar-footer .user-meta strong,
+.gaia-sidebar-footer .user-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gaia-sidebar-footer .role-badge {
+  flex-shrink: 0;
 }
 
 .role-badge {
@@ -548,15 +524,17 @@ select:focus-visible {
 }
 
 .btn-logout {
-  background: var(--surface-muted);
-  color: var(--azul-escuro);
-  border: 1px solid var(--border);
-  padding: 7px 12px;
+  width: 100%;
+  background: transparent;
+  color: var(--branco-complementar);
+  border: 1px solid rgba(232, 241, 243, 0.3);
+  padding: 8px 12px;
   font-size: 12px;
 }
 
 .btn-logout:hover {
   background: #dc2626;
+  border-color: #dc2626;
 }
 
 .gaia-content {
@@ -670,6 +648,72 @@ select:focus-visible {
   font-size: 12px;
 }
 
+.registration-menu {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.registration-menu-card {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  text-align: left;
+  background: #ffffff;
+  color: var(--azul-primario);
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid var(--azul-primario);
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.04);
+}
+
+.registration-menu-card:hover,
+.registration-menu-card.selected {
+  border-left-color: var(--azul-ciano);
+  box-shadow: 0 8px 16px rgba(15, 78, 92, 0.1);
+}
+
+.registration-menu-card strong {
+  font-size: 18px;
+}
+
+.registration-menu-card span,
+.registration-context {
+  color: var(--cinza-complementar);
+  font-size: 13px;
+}
+
+.registration-form {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.registration-form .form-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.registration-form button {
+  flex-shrink: 0;
+  min-height: 40px;
+}
+
+.registration-organization-select {
+  max-width: 520px;
+  margin-top: 20px;
+}
+
+.registration-context {
+  margin: 24px 0 0;
+}
+
+.registration-list {
+  margin-top: 24px;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -748,6 +792,18 @@ select:focus-visible {
   gap: 16px;
 }
 
+@media (max-width: 600px) {
+  .registration-form {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .registration-form button {
+    align-self: flex-start;
+  }
+}
+
 .process-card {
   display: flex;
   flex-direction: column;
@@ -795,8 +851,13 @@ select:focus-visible {
 }
 
 .process-card-title {
+  min-width: 0;
+  width: 100%;
   font-size: 16px;
   color: var(--azul-primario);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .process-card-file {
@@ -855,16 +916,56 @@ select:focus-visible {
 
 .viewer-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 306px;
   gap: 16px;
   min-height: calc(100vh - 190px);
 }
 
 .bpmn-canvas {
+  position: relative;
   min-height: 640px;
   background: #ffffff;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.bpmn-canvas-host {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+}
+
+.bpmn-zoom-controls {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #dce7ea;
+  border-radius: 6px;
+  box-shadow: var(--shadow-sm);
+}
+
+.bpmn-zoom-controls button {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: #ffffff;
+  color: var(--azul-primario);
+  border: 1px solid #dce7ea;
+  border-radius: 4px;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.bpmn-zoom-controls button:hover {
+  background: var(--branco-complementar);
+  color: var(--azul-hover);
 }
 
 .task-panel {
@@ -1142,14 +1243,6 @@ select:focus-visible {
     min-width: max-content;
   }
 
-  .gaia-sidebar-footer {
-    display: none;
-  }
-
-  .gaia-header {
-    padding: 12px 18px;
-  }
-
   .viewer-layout {
     grid-template-columns: 1fr;
   }
@@ -1160,19 +1253,9 @@ select:focus-visible {
 }
 
 @media (max-width: 640px) {
-  .gaia-header {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .gaia-user-box {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
   .role-badge {
-    display: none;
+    font-size: 10px;
+    padding: 3px 7px;
   }
 
   .gaia-content {

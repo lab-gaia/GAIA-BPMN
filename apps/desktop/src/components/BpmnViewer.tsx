@@ -6,6 +6,24 @@ export function BpmnViewer({ xml, tasks, selectedId, onSelect }: { xml: string; 
   const host = useRef<HTMLDivElement>(null);
   const viewer = useRef<NavigatedViewer>();
   const [imported, setImported] = useState(false);
+
+  function zoomIn() {
+    const canvas = viewer.current?.get("canvas") as { zoom: (value?: number | string) => number } | undefined;
+    if (!canvas) return;
+    canvas.zoom(canvas.zoom() * 1.2);
+  }
+
+  function zoomOut() {
+    const canvas = viewer.current?.get("canvas") as { zoom: (value?: number | string) => number } | undefined;
+    if (!canvas) return;
+    canvas.zoom(canvas.zoom() / 1.2);
+  }
+
+  function fitViewport() {
+    const canvas = viewer.current?.get("canvas") as { zoom: (value?: number | string) => number } | undefined;
+    canvas?.zoom("fit-viewport");
+  }
+
   useEffect(() => {
     if (!host.current) return;
     setImported(false);
@@ -49,5 +67,20 @@ export function BpmnViewer({ xml, tasks, selectedId, onSelect }: { xml: string; 
     });
     return () => appliedIds.forEach(id => { canvas.removeMarker(id, "has-values"); canvas.removeMarker(id, "no-values"); canvas.removeMarker(id, "selected"); });
   }, [tasks, selectedId, imported]);
-  return <div className="bpmn-canvas" ref={host} />;
+  return (
+    <div className="bpmn-canvas">
+      <div className="bpmn-zoom-controls" aria-label="Controles de zoom">
+        <button type="button" onClick={zoomIn} aria-label="Aumentar zoom" title="Aumentar zoom">
+          +
+        </button>
+        <button type="button" onClick={zoomOut} aria-label="Diminuir zoom" title="Diminuir zoom">
+          −
+        </button>
+        <button type="button" onClick={fitViewport} aria-label="Enquadrar diagrama" title="Enquadrar diagrama">
+          ⛶
+        </button>
+      </div>
+      <div className="bpmn-canvas-host" ref={host} />
+    </div>
+  );
 }

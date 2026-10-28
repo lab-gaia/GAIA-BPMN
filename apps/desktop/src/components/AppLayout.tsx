@@ -1,25 +1,21 @@
 import { ReactNode, useEffect, useState } from "react";
 import { fetchAvatarBlobUrl, User } from "../api";
 
-export type NavSection = "processes" | "organizations" | "settings";
+export type NavSection = "processes" | "registrations" | "settings";
 
 export function AppLayout({
-  title,
   activeSection,
   user,
   avatarVersion = 0,
   onNavigate,
   onLogout,
-  headerActions,
   children
 }: {
-  title: string;
   activeSection: NavSection;
   user: User;
   avatarVersion?: number;
   onNavigate: (section: NavSection) => void;
   onLogout: () => void;
-  headerActions?: ReactNode;
   children: ReactNode;
 }) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -57,7 +53,7 @@ export function AppLayout({
 
   const navItems: Array<{ id: NavSection; label: string }> = [
     { id: "processes", label: "Processos" },
-    ...(user.role === "Admin" ? [{ id: "organizations" as const, label: "Organizações" }] : []),
+    ...(user.role === "Admin" ? [{ id: "registrations" as const, label: "Cadastros" }] : []),
     { id: "settings", label: "Configurações" }
   ];
 
@@ -90,25 +86,7 @@ export function AppLayout({
         </nav>
 
         <div className="gaia-sidebar-footer">
-          <div className="gaia-footer-badge">
-            <span className="gaia-footer-title">GAIA BPMN</span>
-            <small>Gestão de Processos</small>
-          </div>
-        </div>
-      </aside>
-
-      <div className="gaia-main-area">
-        <header className="gaia-header">
-          <div className="gaia-header-left">
-            <h1 className="gaia-page-title">{title}</h1>
-            {headerActions && <div className="gaia-header-actions">{headerActions}</div>}
-          </div>
-
           <div className="gaia-user-box">
-            <span className={`role-badge ${user.role === "Admin" ? "role-admin" : "role-guest"}`}>
-              {user.role === "Admin" ? "Mestre" : "Convidado"}
-            </span>
-
             <div className="user-avatar" title={user.displayName}>
               {avatarUrl ? <img src={avatarUrl} alt={user.displayName} /> : <span>{initials}</span>}
             </div>
@@ -118,12 +96,18 @@ export function AppLayout({
               <small>@{user.username}</small>
             </div>
 
-            <button type="button" className="btn-logout" onClick={onLogout}>
-              Sair
-            </button>
+            <span className={`role-badge ${user.role === "Admin" ? "role-admin" : "role-guest"}`}>
+              {user.role === "Admin" ? "Mestre" : "Convidado"}
+            </span>
           </div>
-        </header>
 
+          <button type="button" className="btn-logout" onClick={onLogout}>
+            Sair
+          </button>
+        </div>
+      </aside>
+
+      <div className="gaia-main-area">
         <main className="gaia-content">{children}</main>
       </div>
     </div>

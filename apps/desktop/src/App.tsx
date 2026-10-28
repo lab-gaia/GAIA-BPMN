@@ -6,7 +6,7 @@ import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { ProcessView } from "./pages/ProcessView";
 import { Settings } from "./pages/Settings";
-import { Organizations } from "./pages/Organizations";
+import { Registrations } from "./pages/Registrations";
 
 const queryClient = new QueryClient();
 
@@ -16,6 +16,21 @@ function Shell() {
   const [activeSection, setActiveSection] = useState<NavSection>("processes");
   const [processId, setProcessId] = useState<string>();
   const [avatarVersion, setAvatarVersion] = useState(0);
+
+  useEffect(() => {
+    if (!window.history.state?.gaiaBpmn) {
+      window.history.replaceState({ gaiaBpmn: true, section: "processes" }, "");
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as { gaiaBpmn?: boolean; section?: NavSection; processId?: string } | null;
+      setActiveSection(state?.section ?? "processes");
+      setProcessId(state?.processId);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onUnauthorized(() => {
@@ -71,30 +86,20 @@ function Shell() {
     return <Login onSuccess={loggedUser => setUser(loggedUser)} />;
   }
 
-  const pageTitle =
-    activeSection === "organizations"
-      ? "Órgãos e Subórgãos"
-      :
-    activeSection === "settings"
-      ? "Configurações do Sistema"
-      : processId
-      ? "Visualizador de Processo BPMN"
-      : "Portfólio de Processos BPMN";
-
   return (
     <AppLayout
-      title={pageTitle}
       activeSection={activeSection}
       user={user}
       avatarVersion={avatarVersion}
       onNavigate={section => {
         setActiveSection(section);
-        if (section === "processes") setProcessId(undefined);
+        setProcessId(undefined);
+        window.history.pushState({ gaiaBpmn: true, section }, "");
       }}
       onLogout={handleLogout}
     >
-      {activeSection === "organizations" ? (
-        <Organizations />
+      {activeSection === "registrations" ? (
+        <Registrations />
       ) : activeSection === "settings" ? (
         <Settings
           user={user}
@@ -106,9 +111,25 @@ function Shell() {
           }}
         />
       ) : processId ? (
-        <ProcessView processId={processId} user={user} onHome={() => setProcessId(undefined)} />
+        <ProcessView
+          processId={processId}
+          user={user}
+          onHome={() => {
+            if (window.history.state?.processId) {
+              window.history.back();
+            } else {
+              setProcessId(undefined);
+            }
+          }}
+        />
       ) : (
-        <Home user={user} onOpen={setProcessId} />
+        <Home
+          user={user}
+          onOpen={id => {
+            setProcessId(id);
+            window.history.pushState({ gaiaBpmn: true, section: "processes", processId: id }, "");
+          }}
+        />
       )}
     </AppLayout>
   );
