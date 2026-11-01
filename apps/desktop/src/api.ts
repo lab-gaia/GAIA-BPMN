@@ -345,7 +345,7 @@ export async function downloadAttachment(id: string): Promise<{ blob: Blob; file
 export async function printAttachment(id: string): Promise<void> {
   const response = await request(`/api/v1/attachments/${id}/content`);
   const url = URL.createObjectURL(await response.blob());
-  const printWindow = window.open(url, "_blank", "noopener,noreferrer");
+  const printWindow = window.open(url, "_blank");
   if (!printWindow) {
     URL.revokeObjectURL(url);
     throw new Error("Não foi possível abrir a visualização para impressão.");

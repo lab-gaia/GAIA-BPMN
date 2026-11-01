@@ -94,21 +94,40 @@ export function ProcessView({
       throw new Error("O diagrama ainda não está pronto para impressão.");
     }
 
-    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    const printWindow = window.open("", "_blank");
     if (!printWindow) {
-      throw new Error("Não foi possível abrir a visualização para impressão.");
+      throw new Error("Não foi possível abrir a visualização para impressão. Verifique se o navegador bloqueou popups.");
     }
+
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="utf-8">
+          <title>Preparando impressão...</title>
+          <style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #172b4d; }</style>
+        </head>
+        <body>
+          <p>Preparando documento para impressão...</p>
+        </body>
+      </html>`);
+    printWindow.document.close();
 
     try {
       const svg = await exportSvg();
+      const cleanSvg = svg
+        .replace(/<\?xml[\s\S]*?\?>/i, "")
+        .replace(/<!DOCTYPE[\s\S]*?>/i, "")
+        .trim();
+
       const filledTasks = currentTasks.filter(task =>
-        task.description?.trim() || task.input?.trim() || task.output?.trim() || task.instructions?.trim()
+        task.description?.trim() || task.input?.trim() || task.output?.trim() || task.resources?.trim() || task.instructions?.trim()
       );
       const escapeHtml = (value: string) =>
         value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       const field = (label: string, value: string | null) =>
         value?.trim()
-          ? `<section class="field"><h3>${label}</h3><p>${escapeHtml(value).replace(/\r?\n/g, "<br>")}</p></section>`
+          ? `<section class="field"><h3>${label}</h3><p>${escapeHtml(value)}</p></section>`
           : "";
       const taskPages = filledTasks.map(task => `
         <article class="task-page">
@@ -116,46 +135,72 @@ export function ProcessView({
           ${field("Descrição", task.description)}
           ${field("Input", task.input)}
           ${field("Output", task.output)}
-          ${field("Método", task.instructions)}
+          ${field("Recursos necessários", task.resources)}
+          ${field("Instruções", task.instructions)}
         </article>
       `).join("");
 
-      printWindow.document.write(`<!doctype html>
+      const html = `<!doctype html>
         <html lang="pt-BR">
           <head>
             <meta charset="utf-8">
             <title>Impressão do BPMN</title>
             <style>
-              @page { size: landscape; margin: 12mm; }
+              @page { size: landscape; margin: 10mm; }
               * { box-sizing: border-box; }
-              body { margin: 0; color: #172b4d; font-family: Arial, sans-serif; }
-              .diagram-page { height: 180mm; display: flex; flex-direction: column; page-break-after: always; }
-              .diagram-page h1 { margin: 0 0 8mm; font-size: 20px; }
-              .diagram { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
-              .diagram svg { width: 100%; height: 100%; }
-              .task-page { min-height: 180mm; page-break-after: always; }
-              .task-page:last-child { page-break-after: auto; }
-              .task-page h2 { margin: 0 0 10mm; font-size: 18px; border-bottom: 2px solid #17b9c0; padding-bottom: 4mm; }
-              .field { margin: 0 0 7mm; }
-              .field h3 { margin: 0 0 2mm; font-size: 12px; color: #0f4e5c; text-transform: uppercase; }
-              .field p { margin: 0; font-size: 12px; line-height: 1.5; white-space: normal; }
+              body { margin: 0; color: #172b4d; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #fff; }
+              .diagram-page { width: 100%; height: 180mm; max-height: 180mm; display: flex; flex-direction: column; page-break-after: always; break-after: page; overflow: hidden; }
+              .diagram-page h1 { margin: 0 0 6mm; font-size: 18px; color: #0f4e5c; }
+              .diagram { flex: 1; width: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+              .diagram svg { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
+              .task-page { min-height: 180mm; page-break-after: always; break-after: page; padding-top: 4mm; }
+              .task-page:last-child { page-break-after: auto; break-after: auto; }
+              .task-page h2 { margin: 0 0 8mm; font-size: 18px; border-bottom: 2px solid #17b9c0; padding-bottom: 3mm; color: #0f4e5c; }
+              .field { margin: 0 0 6mm; }
+              .field h3 { margin: 0 0 2mm; font-size: 11px; color: #5e6c84; text-transform: uppercase; letter-spacing: 0.5px; }
+              .field p { margin: 0; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
             </style>
           </head>
           <body>
             <article class="diagram-page">
               <h1>Diagrama BPMN</h1>
-              <div class="diagram">${svg}</div>
+              <div class="diagram">${cleanSvg}</div>
             </article>
             ${taskPages}
+            <script>
+              function triggerPrint() {
+                window.focus();
+                setTimeout(function() {
+                  window.print();
+                }, 250);
+              }
+              if (document.readyState === 'complete') {
+                triggerPrint();
+              } else {
+                window.addEventListener('load', triggerPrint);
+              }
+            </script>
           </body>
-        </html>`);
+        </html>`;
+
+      printWindow.document.open();
+      printWindow.document.write(html);
       printWindow.document.close();
-      printWindow.addEventListener("load", () => {
-        printWindow.focus();
-        printWindow.print();
-      }, { once: true });
+
+      setTimeout(() => {
+        try {
+          printWindow.focus();
+          printWindow.print();
+        } catch {
+          // Handled by inline script
+        }
+      }, 400);
     } catch (error) {
-      printWindow.close();
+      try {
+        printWindow.close();
+      } catch {
+        // Window already closed
+      }
       throw error;
     }
   };
