@@ -11,7 +11,6 @@ function ProcessCard({ process, onOpen }: { process: Process; onOpen: (process: 
       </div>
       <strong className="process-card-title">{process.name}</strong>
       <span className="process-card-file">{process.suborganizationName}</span>
-      <span className="process-card-file">{process.fileName ?? "Sem arquivo"}</span>
       <small className="process-card-date">Atualizado em {new Date(process.updatedAt).toLocaleString()}</small>
     </button>
   );

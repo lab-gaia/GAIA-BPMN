@@ -2,7 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import NavigatedViewer from "bpmn-js/lib/NavigatedViewer";
 import type { Task } from "../api";
 
-export function BpmnViewer({ xml, tasks, selectedId, onSelect }: { xml: string; tasks: Task[]; selectedId?: string; onSelect: (id: string) => void }) {
+export function BpmnViewer({
+  xml,
+  tasks,
+  selectedId,
+  onSelect,
+  onExportSvg
+}: {
+  xml: string;
+  tasks: Task[];
+  selectedId?: string;
+  onSelect: (id: string) => void;
+  onExportSvg?: (exportSvg: (() => Promise<string>) | undefined) => void;
+}) {
   const host = useRef<HTMLDivElement>(null);
   const viewer = useRef<NavigatedViewer>();
   const [imported, setImported] = useState(false);
@@ -41,6 +53,9 @@ export function BpmnViewer({ xml, tasks, selectedId, onSelect }: { xml: string; 
     void instance.importXML(xml).then(() => {
       if (!active) return;
       (instance.get("canvas") as { zoom: (mode: string) => void }).zoom("fit-viewport");
+      onExportSvg?.(() =>
+        (instance as NavigatedViewer & { saveSVG: () => Promise<{ svg: string }> }).saveSVG().then(result => result.svg)
+      );
       setImported(true);
     }).catch(error => {
       if (active) console.error("Failed to import BPMN diagram.", error);
@@ -49,8 +64,9 @@ export function BpmnViewer({ xml, tasks, selectedId, onSelect }: { xml: string; 
       active = false;
       instance.destroy();
       viewer.current = undefined;
+      onExportSvg?.(undefined);
     };
-  }, [xml, onSelect]);
+  }, [xml, onSelect, onExportSvg]);
   useEffect(() => {
     const canvas = viewer.current?.get("canvas") as { addMarker: (id: string, marker: string) => void; removeMarker: (id: string, marker: string) => void } | undefined;
     const elementRegistry = viewer.current?.get("elementRegistry") as { get: (id: string) => unknown } | undefined;

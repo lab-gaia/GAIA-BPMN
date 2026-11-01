@@ -34,7 +34,12 @@ export function ProcessView({
   const currentTasks = tasks ?? tasksQuery.data ?? [];
   const selected = currentTasks.find(task => task.externalElementId === selectedId);
   const select = useCallback((id: string) => setSelectedId(id), []);
+  const [exportSvg, setExportSvg] = useState<(() => Promise<string>)>();
+  const registerExportSvg = useCallback((callback: (() => Promise<string>) | undefined) => {
+    setExportSvg(callback ? () => callback : undefined);
+  }, []);
   const [dirty, setDirty] = useState(false);
+  const [printError, setPrintError] = useState<string>();
 
   const save = useMutation({
     mutationFn: () => saveTasks(processId, currentTasks),
@@ -83,6 +88,78 @@ export function ProcessView({
     URL.revokeObjectURL(link.href);
   };
 
+  const printProcess = async () => {
+    setPrintError(undefined);
+    if (!exportSvg) {
+      throw new Error("O diagrama ainda não está pronto para impressão.");
+    }
+
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!printWindow) {
+      throw new Error("Não foi possível abrir a visualização para impressão.");
+    }
+
+    try {
+      const svg = await exportSvg();
+      const filledTasks = currentTasks.filter(task =>
+        task.description?.trim() || task.input?.trim() || task.output?.trim() || task.instructions?.trim()
+      );
+      const escapeHtml = (value: string) =>
+        value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      const field = (label: string, value: string | null) =>
+        value?.trim()
+          ? `<section class="field"><h3>${label}</h3><p>${escapeHtml(value).replace(/\r?\n/g, "<br>")}</p></section>`
+          : "";
+      const taskPages = filledTasks.map(task => `
+        <article class="task-page">
+          <h2>${escapeHtml(task.name || task.externalElementId)}</h2>
+          ${field("Descrição", task.description)}
+          ${field("Input", task.input)}
+          ${field("Output", task.output)}
+          ${field("Método", task.instructions)}
+        </article>
+      `).join("");
+
+      printWindow.document.write(`<!doctype html>
+        <html lang="pt-BR">
+          <head>
+            <meta charset="utf-8">
+            <title>Impressão do BPMN</title>
+            <style>
+              @page { size: landscape; margin: 12mm; }
+              * { box-sizing: border-box; }
+              body { margin: 0; color: #172b4d; font-family: Arial, sans-serif; }
+              .diagram-page { height: 180mm; display: flex; flex-direction: column; page-break-after: always; }
+              .diagram-page h1 { margin: 0 0 8mm; font-size: 20px; }
+              .diagram { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+              .diagram svg { width: 100%; height: 100%; }
+              .task-page { min-height: 180mm; page-break-after: always; }
+              .task-page:last-child { page-break-after: auto; }
+              .task-page h2 { margin: 0 0 10mm; font-size: 18px; border-bottom: 2px solid #17b9c0; padding-bottom: 4mm; }
+              .field { margin: 0 0 7mm; }
+              .field h3 { margin: 0 0 2mm; font-size: 12px; color: #0f4e5c; text-transform: uppercase; }
+              .field p { margin: 0; font-size: 12px; line-height: 1.5; white-space: normal; }
+            </style>
+          </head>
+          <body>
+            <article class="diagram-page">
+              <h1>Diagrama BPMN</h1>
+              <div class="diagram">${svg}</div>
+            </article>
+            ${taskPages}
+          </body>
+        </html>`);
+      printWindow.document.close();
+      printWindow.addEventListener("load", () => {
+        printWindow.focus();
+        printWindow.print();
+      }, { once: true });
+    } catch (error) {
+      printWindow.close();
+      throw error;
+    }
+  };
+
   if (diagram.isLoading || tasksQuery.isLoading) {
     return <p className="status-message">Carregando processo...</p>;
   }
@@ -129,15 +206,29 @@ export function ProcessView({
           >
             Baixar BPMN
           </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={!exportSvg}
+            onClick={() => void printProcess().catch(error => setPrintError(error instanceof Error ? error.message : "Falha ao preparar a impressão."))}
+          >
+            Imprimir BPMN
+          </button>
         </div>
       </div>
 
-      {(save.error || upload.error || remove.error) && (
-        <p className="error">{(save.error ?? upload.error ?? remove.error)?.message}</p>
+      {(save.error || upload.error || remove.error || printError) && (
+        <p className="error">{printError ?? (save.error ?? upload.error ?? remove.error)?.message}</p>
       )}
 
       <section className="viewer-layout">
-        <BpmnViewer xml={diagram.data} tasks={currentTasks} selectedId={selectedId} onSelect={select} />
+        <BpmnViewer
+          xml={diagram.data}
+          tasks={currentTasks}
+          selectedId={selectedId}
+          onSelect={select}
+          onExportSvg={registerExportSvg}
+        />
         <TaskPanel
           task={selected}
           readOnly={isReadOnly}
