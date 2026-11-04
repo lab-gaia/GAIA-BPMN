@@ -463,6 +463,14 @@ select:focus-visible {
   white-space: nowrap;
 }
 
+.gaia-sidebar-footer .user-meta strong {
+  color: #ffffff;
+}
+
+.gaia-sidebar-footer .user-meta small {
+  color: var(--branco-complementar);
+}
+
 .gaia-sidebar-footer .role-badge {
   flex-shrink: 0;
 }

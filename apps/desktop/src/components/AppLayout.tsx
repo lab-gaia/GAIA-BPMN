@@ -97,7 +97,7 @@ export function AppLayout({
             </div>
 
             <span className={`role-badge ${user.role === "Admin" ? "role-admin" : "role-guest"}`}>
-              {user.role === "Admin" ? "Mestre" : "Convidado"}
+              {user.role === "Admin" ? "ADMIN" : "Convidado"}
             </span>
           </div>
 
