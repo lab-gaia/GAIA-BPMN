@@ -15,6 +15,7 @@ services:
       Auth__AdminDisplayName: ${AUTH_ADMIN_DISPLAY_NAME:-Administrador}
       Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN_DEV:-http://localhost:5173}
       Cors__AllowedOrigins__1: ${CORS_ALLOWED_ORIGIN_ELECTRON:-null}
+      Cors__AllowedOrigins__2: http://127.0.0.1:5173
     ports:
       - "8080:8080"
     volumes:
