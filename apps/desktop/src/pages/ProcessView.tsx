@@ -146,14 +146,15 @@ export function ProcessView({
             <meta charset="utf-8">
             <title>Impressão do BPMN</title>
             <style>
-              @page { size: landscape; margin: 10mm; }
+              @page { size: A4 portrait; margin: 10mm; }
               * { box-sizing: border-box; }
-              body { margin: 0; color: #172b4d; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #fff; }
-              .diagram-page { width: 100%; height: 180mm; max-height: 180mm; display: flex; flex-direction: column; page-break-after: always; break-after: page; overflow: hidden; }
-              .diagram-page h1 { margin: 0 0 6mm; font-size: 18px; color: #0f4e5c; }
-              .diagram { flex: 1; width: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-              .diagram svg { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
-              .task-page { min-height: 180mm; page-break-after: always; break-after: page; padding-top: 4mm; }
+              html, body { margin: 0; width: 210mm; color: #172b4d; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #fff; }
+              .diagram-page { width: 190mm; height: 277mm; display: flex; flex-direction: column; page-break-after: always; break-after: page; overflow: hidden; }
+              .diagram-page h1 { margin: 0 0 6mm; flex: 0 0 auto; font-size: 18px; color: #0f4e5c; }
+              .diagram { position: relative; flex: 1; width: 190mm; min-height: 0; overflow: hidden; }
+              .diagram-frame { position: absolute; top: 50%; left: 50%; width: 255mm; height: 180mm; display: flex; align-items: center; justify-content: center; transform: translate(-50%, -50%) rotate(90deg); transform-origin: center center; }
+              .diagram-frame svg { max-width: 100%; max-height: 100%; width: auto; height: auto; }
+              .task-page { width: 190mm; min-height: 277mm; page-break-after: always; break-after: page; padding-top: 4mm; }
               .task-page:last-child { page-break-after: auto; break-after: auto; }
               .task-page h2 { margin: 0 0 8mm; font-size: 18px; border-bottom: 2px solid #17b9c0; padding-bottom: 3mm; color: #0f4e5c; }
               .field { margin: 0 0 6mm; }
@@ -164,7 +165,7 @@ export function ProcessView({
           <body>
             <article class="diagram-page">
               <h1>Diagrama BPMN</h1>
-              <div class="diagram">${cleanSvg}</div>
+              <div class="diagram"><div class="diagram-frame">${cleanSvg}</div></div>
             </article>
             ${taskPages}
             <script>
