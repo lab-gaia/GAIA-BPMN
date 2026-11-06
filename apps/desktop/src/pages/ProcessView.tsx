@@ -187,15 +187,6 @@ export function ProcessView({
       printWindow.document.open();
       printWindow.document.write(html);
       printWindow.document.close();
-
-      setTimeout(() => {
-        try {
-          printWindow.focus();
-          printWindow.print();
-        } catch {
-          // Handled by inline script
-        }
-      }, 400);
     } catch (error) {
       try {
         printWindow.close();
