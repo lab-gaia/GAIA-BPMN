@@ -248,6 +248,20 @@ export async function listSuborganizations(organizationId: string): Promise<Subo
   );
 }
 
+export async function downloadOrganizationExport(
+  organizationId: string,
+  suborganizationId?: string
+): Promise<{ blob: Blob; fileName?: string }> {
+  const path = suborganizationId
+    ? `/api/v1/organizations/${organizationId}/suborganizations/${suborganizationId}/export`
+    : `/api/v1/organizations/${organizationId}/export`;
+  const response = await request(path);
+  return {
+    blob: await response.blob(),
+    fileName: response.headers.get("Content-Disposition")?.match(/filename="?([^"]+)"?/)?.[1]
+  };
+}
+
 export async function createOrganization(name: string): Promise<Organization> {
   return organizationSchema.parse(await (await request("/api/v1/organizations", {
     method: "POST",

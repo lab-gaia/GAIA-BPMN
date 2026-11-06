@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createOrganization,
   createSuborganization,
+  downloadOrganizationExport,
   listOrganizations,
   listSuborganizations,
   updateOrganization,
@@ -16,6 +17,8 @@ export function Organizations() {
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string>();
   const [organizationName, setOrganizationName] = useState("");
   const [suborganizationName, setSuborganizationName] = useState("");
+  const [downloading, setDownloading] = useState<string>();
+  const [downloadError, setDownloadError] = useState<string>();
 
   const organizations = useQuery({ queryKey: ["organizations"], queryFn: listOrganizations });
   const suborganizations = useQuery({
@@ -58,6 +61,24 @@ export function Organizations() {
       !suborganization.isActive
     ).then(refreshOrganizations);
   };
+  const download = async (organizationId: string, suborganizationId?: string) => {
+    const key = suborganizationId ?? organizationId;
+    setDownloading(key);
+    setDownloadError(undefined);
+    try {
+      const result = await downloadOrganizationExport(organizationId, suborganizationId);
+      const url = URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.fileName ?? "exportacao-bpmn.zip";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : "Não foi possível baixar a exportação.");
+    } finally {
+      setDownloading(undefined);
+    }
+  };
 
   return (
     <div className="settings-container">
@@ -98,6 +119,14 @@ export function Organizations() {
               <button type="button" className="btn-secondary btn-xs" onClick={event => { event.stopPropagation(); toggleOrganization(organization); }}>
                 {organization.isActive ? "Inativar" : "Ativar"}
               </button>
+              <button
+                type="button"
+                className="btn-secondary btn-xs"
+                onClick={event => { event.stopPropagation(); void download(organization.id); }}
+                disabled={downloading === organization.id}
+              >
+                {downloading === organization.id ? "Baixando..." : "Baixar ZIP"}
+              </button>
             </div>
           ))}
         </div>
@@ -130,13 +159,21 @@ export function Organizations() {
                   <button type="button" className="btn-secondary btn-xs" onClick={() => toggleSuborganization(suborganization)}>
                     {suborganization.isActive ? "Inativar" : "Ativar"}
                   </button>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-xs"
+                    onClick={() => void download(suborganization.organizationId, suborganization.id)}
+                    disabled={downloading === suborganization.id}
+                  >
+                    {downloading === suborganization.id ? "Baixando..." : "Baixar ZIP"}
+                  </button>
                 </div>
               ))}
             </div>
           </>
         )}
       </section>
-      {error && <p className="error">{error.message}</p>}
+      {(error || downloadError) && <p className="error">{error?.message ?? downloadError}</p>}
     </div>
   );
 }

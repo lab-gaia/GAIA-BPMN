@@ -1,7 +1,9 @@
+using System.IO.Compression;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Text.Encodings.Web;
 using BpmnProperties.Application;
 using BpmnProperties.Domain;
 using BpmnProperties.Infrastructure;
@@ -290,6 +292,32 @@ organizations.MapGet("/{organizationId:guid}/suborganizations", async (Guid orga
         .Where(x => x.OrganizationId == organizationId).OrderBy(x => x.Name)
         .Select(x => new SuborganizationResponse(x.Id, x.OrganizationId, x.Name, x.Code, x.IsActive))
         .ToListAsync(cancellationToken));
+});
+organizations.MapGet("/{organizationId:guid}/export", async (
+    Guid organizationId, AppDbContext db, IObjectStorage storage, CancellationToken cancellationToken) =>
+{
+    var organization = await db.Organizations.AsNoTracking()
+        .SingleOrDefaultAsync(x => x.Id == organizationId, cancellationToken);
+    if (organization is null) return Results.NotFound();
+
+    var suborganizations = await db.Suborganizations.AsNoTracking()
+        .Where(x => x.OrganizationId == organizationId)
+        .OrderBy(x => x.Name)
+        .ToListAsync(cancellationToken);
+    var bytes = await BuildExportZipAsync(organization.Name, suborganizations, db, storage, cancellationToken);
+    return Results.File(bytes, "application/zip", $"{Slugify(organization.Name)}.zip");
+});
+organizations.MapGet("/{organizationId:guid}/suborganizations/{suborganizationId:guid}/export", async (
+    Guid organizationId, Guid suborganizationId, AppDbContext db, IObjectStorage storage, CancellationToken cancellationToken) =>
+{
+    var suborganization = await db.Suborganizations.AsNoTracking()
+        .SingleOrDefaultAsync(x => x.Id == suborganizationId && x.OrganizationId == organizationId, cancellationToken);
+    if (suborganization is null) return Results.NotFound();
+
+    var organization = await db.Organizations.AsNoTracking()
+        .SingleAsync(x => x.Id == organizationId, cancellationToken);
+    var bytes = await BuildExportZipAsync(organization.Name, [suborganization], db, storage, cancellationToken);
+    return Results.File(bytes, "application/zip", $"{Slugify(suborganization.Name)}.zip");
 });
 organizations.MapPost("/", async (CreateOrganizationRequest request, AppDbContext db, CancellationToken cancellationToken) =>
 {
@@ -665,4 +693,165 @@ static bool IsTaskElement(string elementType) =>
     || elementType is "task" or "subProcess" or "callActivity";
 
 app.Run();
+
+static async Task<byte[]> BuildExportZipAsync(
+    string organizationName,
+    IReadOnlyList<Suborganization> suborganizations,
+    AppDbContext db,
+    IObjectStorage storage,
+    CancellationToken cancellationToken)
+{
+    var suborganizationIds = suborganizations.Select(x => x.Id).ToArray();
+    var processes = await db.Processes.AsNoTracking()
+        .Where(x => suborganizationIds.Contains(x.SuborganizationId))
+        .OrderBy(x => x.Suborganization.Name)
+        .ThenBy(x => x.Name)
+        .Select(x => new ExportProcessData(
+            x.Id,
+            x.Name,
+            x.FileName,
+            x.DiagramObjectKey,
+            x.SuborganizationId,
+            x.Suborganization.Name))
+        .ToListAsync(cancellationToken);
+
+    await using var output = new MemoryStream();
+    using (var archive = new ZipArchive(output, ZipArchiveMode.Create, leaveOpen: true))
+    {
+        var rootHtml = suborganizations.Count == 1
+            ? BuildSuborganizationHtml(suborganizations[0].Name, processes)
+            : BuildIndexHtml(organizationName, organizationName, suborganizations, processes);
+        AddZipEntry(archive, "index.html", rootHtml);
+
+        foreach (var suborganization in suborganizations)
+        {
+            var suborganizationProcesses = processes.Where(x => x.SuborganizationId == suborganization.Id).ToList();
+            var suborganizationPath = $"orgao-{Slugify(suborganization.Name)}-{suborganization.Id:N}.html";
+            AddZipEntry(
+                archive,
+                suborganizationPath,
+                BuildSuborganizationHtml(suborganization.Name, suborganizationProcesses));
+
+            foreach (var process in suborganizationProcesses)
+            {
+                if (string.IsNullOrWhiteSpace(process.DiagramObjectKey))
+                    continue;
+
+                await using var diagram = await storage.GetAsync(process.DiagramObjectKey, cancellationToken);
+                using var reader = new StreamReader(diagram);
+                var xml = await reader.ReadToEndAsync(cancellationToken);
+                var processPath = $"bpmn/{Slugify(process.Name)}-{process.Id:N}.html";
+                AddZipEntry(archive, processPath, BuildProcessHtml(process.Name, xml));
+            }
+        }
+    }
+
+    return output.ToArray();
+}
+
+static void AddZipEntry(ZipArchive archive, string path, string content)
+{
+    var entry = archive.CreateEntry(path, CompressionLevel.Fastest);
+    using var writer = new StreamWriter(entry.Open(), new UTF8Encoding(false));
+    writer.Write(content);
+}
+
+static string BuildIndexHtml(
+    string title,
+    string organizationName,
+    IReadOnlyList<Suborganization> suborganizations,
+    IEnumerable<ExportProcessData> processes)
+{
+    var links = suborganizations.Select(suborganization =>
+    {
+        var path = $"orgao-{Slugify(suborganization.Name)}-{suborganization.Id:N}.html";
+        var count = processes.Count(x => x.SuborganizationId == suborganization.Id);
+        return $"<li><a href=\"{path}\">{HtmlEncoder.Default.Encode(suborganization.Name)}</a> <span>({count} BPMN(s))</span></li>";
+    });
+    var description = suborganizations.Count == 1
+        ? $"BPMNs do órgão {HtmlEncoder.Default.Encode(title)}."
+        : $"Órgãos da organização {HtmlEncoder.Default.Encode(organizationName)}.";
+    return BuildHtml(title, description, $"<ul>{string.Join("", links)}</ul>");
+}
+
+static string BuildSuborganizationHtml(string name, IEnumerable<ExportProcessData> processes)
+{
+    var links = processes.Select(process =>
+    {
+        var path = $"bpmn/{Slugify(process.Name)}-{process.Id:N}.html";
+        return process.DiagramObjectKey is null
+            ? $"<li>{HtmlEncoder.Default.Encode(process.Name)} <span>(diagrama indisponível)</span></li>"
+            : $"<li><a href=\"{path}\">{HtmlEncoder.Default.Encode(process.Name)}</a></li>";
+    });
+    return BuildHtml(name, $"BPMNs do órgão {HtmlEncoder.Default.Encode(name)}.", $"<ul>{string.Join("", links)}</ul>");
+}
+
+static string BuildProcessHtml(string name, string xml)
+{
+    var encodedXml = JsonSerializer.Serialize(xml);
+    var body = $$"""
+      <div id="canvas" class="canvas"></div>
+      <script>
+        const xml = {{encodedXml}};
+        const viewer = new BpmnJS({ container: '#canvas' });
+        viewer.importXML(xml).then(() => viewer.get('canvas').zoom('fit-viewport'));
+      </script>
+    """;
+    return BuildHtml(name, "Visualização do diagrama BPMN.", body, includeBpmn: true);
+}
+
+static string BuildHtml(string title, string description, string body, bool includeBpmn = false)
+{
+    var bpmnScript = includeBpmn
+        ? "<script src=\"https://unpkg.com/bpmn-js@17.3.0/dist/bpmn-viewer.production.min.js\"></script>"
+        : "";
+    const string style = """
+          body { margin: 0; padding: 24px; color: #172b4d; font-family: Arial, sans-serif; }
+          h1 { color: #0f4e5c; }
+          li { margin: 12px 0; }
+          a { color: #0f7f88; }
+          span { color: #5e6c84; }
+          .canvas { height: calc(100vh - 120px); border: 1px solid #dfe1e6; }
+        """;
+    return $$"""
+      <!doctype html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{{HtmlEncoder.Default.Encode(title)}}</title>
+        {{bpmnScript}}
+        <style>{{style}}</style>
+      </head>
+      <body>
+        <h1>{{HtmlEncoder.Default.Encode(title)}}</h1>
+        <p>{{description}}</p>
+        {{body}}
+      </body>
+      </html>
+    """;
+}
+
+static string Slugify(string value)
+{
+    var normalized = value.Normalize(System.Text.NormalizationForm.FormD);
+    var builder = new StringBuilder();
+    foreach (var character in normalized)
+    {
+        if (System.Globalization.CharUnicodeInfo.GetUnicodeCategory(character) == System.Globalization.UnicodeCategory.NonSpacingMark)
+            continue;
+        builder.Append(char.IsLetterOrDigit(character) ? char.ToLowerInvariant(character) : '-');
+    }
+
+    var slug = System.Text.RegularExpressions.Regex.Replace(builder.ToString(), "-+", "-").Trim('-');
+    return string.IsNullOrWhiteSpace(slug) ? "exportacao" : slug;
+}
+
+sealed record ExportProcessData(
+    Guid Id,
+    string Name,
+    string? FileName,
+    string? DiagramObjectKey,
+    Guid SuborganizationId,
+    string SuborganizationName);
 public partial class Program { }
