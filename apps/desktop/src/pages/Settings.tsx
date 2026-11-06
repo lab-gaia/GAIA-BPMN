@@ -15,6 +15,7 @@ import {
   type User,
   type UserRole
 } from "../api";
+import { PasswordInput } from "../components/PasswordInput";
 
 export function Settings({
   user,
@@ -306,8 +307,7 @@ export function Settings({
         <form onSubmit={handlePasswordSubmit} className="form-card-body">
           <label className="form-label">
             Senha Atual
-            <input
-              type="password"
+            <PasswordInput
               required
               value={currentPassword}
               onChange={e => setCurrentPassword(e.target.value)}
@@ -316,8 +316,7 @@ export function Settings({
 
           <label className="form-label">
             Nova Senha (mínimo 6 caracteres)
-            <input
-              type="password"
+            <PasswordInput
               required
               minLength={6}
               value={newPassword}
@@ -327,8 +326,7 @@ export function Settings({
 
           <label className="form-label">
             Confirmar Nova Senha
-            <input
-              type="password"
+            <PasswordInput
               required
               minLength={6}
               value={confirmPassword}
@@ -408,8 +406,7 @@ export function Settings({
 
                 <label className="form-label">
                   Senha Inicial
-                  <input
-                    type="password"
+                  <PasswordInput
                     required
                     minLength={6}
                     placeholder="Mínimo 6 caracteres"
@@ -476,8 +473,7 @@ export function Settings({
                           <div className="user-row-actions">
                             {resetTargetUserId === item.id ? (
                               <div className="inline-reset-box">
-                                <input
-                                  type="password"
+                                <PasswordInput
                                   placeholder="Nova senha (mín. 6)"
                                   value={resetPasswordValue}
                                   onChange={e => setResetPasswordValue(e.target.value)}

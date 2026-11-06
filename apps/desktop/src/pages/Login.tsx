@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { checkApiHealth, getApiUrl, login, setApiUrl, User } from "../api";
+import { PasswordInput } from "../components/PasswordInput";
 
 export function Login({ onSuccess }: { onSuccess: (user: User) => void }) {
   const [username, setUsername] = useState("");
@@ -70,10 +71,9 @@ export function Login({ onSuccess }: { onSuccess: (user: User) => void }) {
               <label htmlFor="password" className="sr-only">
                 Senha
               </label>
-              <input
+              <PasswordInput
                 id="password"
                 name="password"
-                type="password"
                 required
                 autoComplete="current-password"
                 className="login-input login-input-bottom"
