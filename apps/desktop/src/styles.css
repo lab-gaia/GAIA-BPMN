@@ -662,6 +662,12 @@ select:focus-visible {
   margin: 0;
 }
 
+.home-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .organization-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));

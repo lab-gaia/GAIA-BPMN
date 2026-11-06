@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { importProcess, listOrganizations, listProcesses, listSuborganizations, User, type Process } from "../api";
+import {
+  downloadOrganizationExport,
+  importProcess,
+  listOrganizations,
+  listProcesses,
+  listSuborganizations,
+  User,
+  type Process
+} from "../api";
 
 function ProcessCard({ process, onOpen }: { process: Process; onOpen: (process: Process) => void }) {
   return (
@@ -25,6 +33,8 @@ export function Home({ user, onOpen }: { user: User; onOpen: (id: string) => voi
   const [importOrganizationId, setImportOrganizationId] = useState("");
   const [importSuborganizationId, setImportSuborganizationId] = useState("");
   const [importFile, setImportFile] = useState<File>();
+  const [isDownloadingOrganization, setIsDownloadingOrganization] = useState(false);
+  const [downloadError, setDownloadError] = useState<string>();
   const [recentProcessIds, setRecentProcessIds] = useState<string[]>(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(recentProcessesStorageKey) ?? "[]") as unknown;
@@ -82,6 +92,25 @@ export function Home({ user, onOpen }: { user: User; onOpen: (id: string) => voi
     onOpen(process.id);
   }
 
+  async function downloadSelectedOrganization() {
+    if (!selectedOrganizationId) return;
+    setIsDownloadingOrganization(true);
+    setDownloadError(undefined);
+    try {
+      const result = await downloadOrganizationExport(selectedOrganizationId);
+      const url = URL.createObjectURL(result.blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = result.fileName ?? "organizacao-bpmn.zip";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : "Não foi possível baixar a organização.");
+    } finally {
+      setIsDownloadingOrganization(false);
+    }
+  }
+
   return (
     <div className="home-container">
       <div className="kpi-banner">
@@ -106,6 +135,7 @@ export function Home({ user, onOpen }: { user: User; onOpen: (id: string) => voi
 
       {processes.error && <p className="error">{processes.error.message}</p>}
       {organizations.error && <p className="error">{organizations.error.message}</p>}
+      {downloadError && <p className="error">{downloadError}</p>}
       {processes.isLoading && <p className="status-message">Carregando processos...</p>}
 
       <section className="home-section">
@@ -143,9 +173,19 @@ export function Home({ user, onOpen }: { user: User; onOpen: (id: string) => voi
               <h2>{activeOrganizations.find(item => item.id === selectedOrganizationId)?.name}</h2>
               <p className="muted-text">BPMNs desta organização.</p>
             </div>
-            <button type="button" className="btn-secondary btn-sm" onClick={() => setSelectedOrganizationId(undefined)}>
-              Mostrar todas
-            </button>
+            <div className="home-section-actions">
+              <button
+                type="button"
+                className="btn-primary btn-sm"
+                onClick={() => void downloadSelectedOrganization()}
+                disabled={isDownloadingOrganization}
+              >
+                {isDownloadingOrganization ? "Baixando..." : "Baixar ZIP"}
+              </button>
+              <button type="button" className="btn-secondary btn-sm" onClick={() => setSelectedOrganizationId(undefined)}>
+                Mostrar todas
+              </button>
+            </div>
           </div>
           {selectedProcesses.length > 0 ? (
             <div className="process-grid">
